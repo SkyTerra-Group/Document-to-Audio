@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document to Speech Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .drag-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 50px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .drag-area.drag-over {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+        .voice-option {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .voice-option:hover {
+            background-color: #f8f9fa;
+        }
+        .voice-option.selected {
+            background-color: #007bff;
+            color: white;
+        }
+        .audio-controls {
+            margin-top: 20px;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .loading {
+            display: none;
+        }
+        .result-section {
+            display: none;
+            margin-top: 30px;
+        }
+        .test-preview {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0"><i class="fas fa-file-audio"></i> Document to Speech Converter</h3>
+                        <small>Upload a document and convert it to audio with AI voice</small>
+                    </div>
+                    <div class="card-body">
+                        <!-- File Upload Section -->
+                        <div class="mb-4">
+                            <h5>1. Upload Document</h5>
+                            <div class="drag-area" id="dragArea">
+                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                <p class="mb-3">Drag and drop your document here or click to browse</p>
+                                <p class="small text-muted">Supported formats: PDF, DOCX, TXT (Max: 16MB)</p>
+                                <input type="file" id="fileInput" class="d-none" accept=".txt,.pdf,.docx">
+                                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput').click()">
+                                    <i class="fas fa-folder-open"></i> Browse Files
+                                </button>
+                            </div>
+                            <div id="fileInfo" class="mt-3" style="display: none;">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-file"></i> <span id="fileName"></span>
+                                    <span class="badge bg-secondary ms-2" id="fileSize"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Voice Settings Section -->
+                        <div class="mb-4" id="voiceSettings" style="display: none;">
+                            <h5>2. Voice Settings</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">Voice Type:</label>
+                                    <div class="row" id="voiceOptions">
+                                        <div class="col-4 mb-2">
+                                            <div class="voice-option border rounded p-2 text-center" data-voice="alloy">
+                                                <small><strong>Alloy</strong><br>Neutral</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4 mb-2">
+                                            <div class="voice-option border rounded p-2 text-center" data-voice="echo">
+                                                <small><strong>Echo</strong><br>Male</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4 mb-2">
+                                            <div class="voice-option border rounded p-2 text-center" data-voice="fable">
+                                                <small><strong>Fable</strong><br>British</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4 mb-2">
+                                            <div class="voice-option border rounded p-2 text-center" data-voice="onyx">
+                                                <small><strong>Onyx</strong><br>Deep</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4 mb-2">
+                                            <div class="voice-option border rounded p-2 text-center selected" data-voice="nova">
+                                                <small><strong>Nova</strong><br>Female</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-4 mb-2">
+                                            <div class="voice-option border rounded p-2 text-center" data-voice="shimmer">
+                                                <small><strong>Shimmer</strong><br>Soft</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Playback Speed: <span id="speedDisplay">1.3x</span></label>
+                                    <div class="speed-control">
+                                        <input type="range" class="form-range" id="speedSlider" min="0.5" max="3.0" step="0.1" value="1.3">
+                                        <input type="number" class="form-control form-control-sm" id="speedInput" min="0.5" max="3.0" step="0.1" value="1.3" style="width: 80px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Test Section -->
+                        <div class="mb-4" id="testSection" style="display: none;">
+                            <h5>3. Test Voice (Optional)</h5>
+                            <p class="text-muted">Generate a sample audio from the first part of your document to test the voice and speed settings.</p>
+                            <div id="testPreview" class="test-preview" style="display: none;">
+                                <strong>Test Preview:</strong>
+                                <div id="testText" class="mt-2"></div>
+                            </div>
+                            <button type="button" class="btn btn-outline-success" id="testBtn">
+                                <i class="fas fa-play"></i> Generate Test Audio
+                            </button>
+                            <div id="testResult" class="mt-3" style="display: none;">
+                                <audio controls class="w-100" id="testAudio">
+                                    Your browser does not support the audio element.
+                                </audio>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="downloadTestBtn">
+                                        <i class="fas fa-download"></i> Download Test Audio
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Full Conversion Section -->
+                        <div class="mb-4" id="convertSection" style="display: none;">
+                            <h5>4. Convert Full Document</h5>
+                            <p class="text-muted">Convert the entire document to audio. This may take several minutes for large documents.</p>
+                            <button type="button" class="btn btn-primary" id="convertBtn">
+                                <i class="fas fa-magic"></i> Convert Full Document
+                            </button>
+                            <div id="fullResult" class="mt-3" style="display: none;">
+                                <audio controls class="w-100" id="fullAudio">
+                                    Your browser does not support the audio element.
+                                </audio>
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-success" id="downloadFullBtn">
+                                        <i class="fas fa-download"></i> Download Audio File
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Loading States -->
+                        <div id="testLoading" class="loading">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">Generating test audio...</p>
+                            </div>
+                        </div>
+
+                        <div id="fullLoading" class="loading">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2">Converting full document... This may take a few minutes.</p>
+                                <div class="progress mt-3">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Error Display -->
+                        <div id="errorAlert" class="alert alert-danger" style="display: none;">
+                            <i class="fas fa-exclamation-triangle"></i> <span id="errorMessage"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentFile = null;
+        let selectedVoice = 'nova';
+        let currentSpeed = 1.3;
+
+        // DOM elements
+        const dragArea = document.getElementById('dragArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const voiceSettings = document.getElementById('voiceSettings');
+        const testSection = document.getElementById('testSection');
+        const convertSection = document.getElementById('convertSection');
+        const errorAlert = document.getElementById('errorAlert');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // Initialize event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // File upload handlers
+            dragArea.addEventListener('click', () => fileInput.click());
+            dragArea.addEventListener('dragover', handleDragOver);
+            dragArea.addEventListener('dragleave', handleDragLeave);
+            dragArea.addEventListener('drop', handleDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // Voice selection
+            document.querySelectorAll('.voice-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.voice-option').forEach(o => o.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedVoice = this.dataset.voice;
+                });
+            });
+
+            // Speed controls
+            const speedSlider = document.getElementById('speedSlider');
+            const speedInput = document.getElementById('speedInput');
+            const speedDisplay = document.getElementById('speedDisplay');
+
+            speedSlider.addEventListener('input', function() {
+                currentSpeed = parseFloat(this.value);
+                speedInput.value = currentSpeed;
+                speedDisplay.textContent = currentSpeed.toFixed(1) + 'x';
+            });
+
+            speedInput.addEventListener('input', function() {
+                currentSpeed = parseFloat(this.value);
+                speedSlider.value = currentSpeed;
+                speedDisplay.textContent = currentSpeed.toFixed(1) + 'x';
+            });
+
+            // Action buttons
+            document.getElementById('testBtn').addEventListener('click', generateTestAudio);
+            document.getElementById('convertBtn').addEventListener('click', convertFullDocument);
+        });
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            dragArea.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            dragArea.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            dragArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                processFile(e.target.files[0]);
+            }
+        }
+
+        function processFile(file) {
+            // Validate file type
+            const allowedTypes = ['text/plain', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            if (!allowedTypes.includes(file.type) && !file.name.match(/\.(txt|pdf|docx)$/i)) {
+                showError('Please upload a valid document file (TXT, PDF, or DOCX)');
+                return;
+            }
+
+            // Validate file size (16MB)
+            if (file.size > 16 * 1024 * 1024) {
+                showError('File size must be less than 16MB');
+                return;
+            }
+
+            uploadFile(file);
+        }
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentFile = data.filename;
+                    
+                    // Show file info
+                    fileName.textContent = file.name;
+                    fileSize.textContent = formatBytes(file.size);
+                    fileInfo.style.display = 'block';
+                    
+                    // Show test preview
+                    document.getElementById('testText').textContent = data.test_text;
+                    document.getElementById('testPreview').style.display = 'block';
+                    
+                    // Show next sections
+                    voiceSettings.style.display = 'block';
+                    testSection.style.display = 'block';
+                    convertSection.style.display = 'block';
+                    
+                    hideError();
+                } else {
+                    showError(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Failed to upload file. Please try again.');
+            });
+        }
+
+        function generateTestAudio() {
+            if (!currentFile) {
+                showError('Please upload a file first');
+                return;
+            }
+
+            const testLoading = document.getElementById('testLoading');
+            const testBtn = document.getElementById('testBtn');
+            
+            testBtn.disabled = true;
+            testLoading.style.display = 'block';
+
+            fetch('/test_speech', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: currentFile,
+                    voice: selectedVoice,
+                    speed: currentSpeed
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const testAudio = document.getElementById('testAudio');
+                    testAudio.src = `/download/${data.audio_filename}`;
+                    document.getElementById('testResult').style.display = 'block';
+                    
+                    // Set up download button
+                    document.getElementById('downloadTestBtn').onclick = () => {
+                        window.open(`/download/${data.audio_filename}`, '_blank');
+                    };
+                    
+                    hideError();
+                } else {
+                    showError(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Failed to generate test audio. Please try again.');
+            })
+            .finally(() => {
+                testBtn.disabled = false;
+                testLoading.style.display = 'none';
+            });
+        }
+
+        function convertFullDocument() {
+            if (!currentFile) {
+                showError('Please upload a file first');
+                return;
+            }
+
+            const fullLoading = document.getElementById('fullLoading');
+            const convertBtn = document.getElementById('convertBtn');
+            
+            convertBtn.disabled = true;
+            fullLoading.style.display = 'block';
+
+            fetch('/convert_full', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: currentFile,
+                    voice: selectedVoice,
+                    speed: currentSpeed
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const fullAudio = document.getElementById('fullAudio');
+                    fullAudio.src = `/download/${data.audio_filename}`;
+                    document.getElementById('fullResult').style.display = 'block';
+                    
+                    // Set up download button
+                    document.getElementById('downloadFullBtn').onclick = () => {
+                        window.open(`/download/${data.audio_filename}`, '_blank');
+                    };
+                    
+                    hideError();
+                } else {
+                    showError(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Failed to convert document. Please try again.');
+            })
+            .finally(() => {
+                convertBtn.disabled = false;
+                fullLoading.style.display = 'none';
+            });
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorAlert.style.display = 'block';
+            errorAlert.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideError() {
+            errorAlert.style.display = 'none';
+        }
+
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

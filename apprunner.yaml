@@ -1,0 +1,23 @@
+version: 1.0
+runtime: python3
+build:
+  commands:
+    build:
+      - echo "Starting build process..."
+      - python -m pip install --upgrade pip
+      - pip install -r requirements.txt
+      - echo "Build completed successfully"
+  env:
+    - name: FLASK_ENV
+      value: production
+run:
+  runtime-version: 3.11
+  command: gunicorn --bind 0.0.0.0:8080 --workers 2 --timeout 300 app:app
+  network:
+    port: 8080
+    env: PORT
+  env:
+    - name: PORT
+      value: "8080"
+    - name: FLASK_ENV
+      value: production
