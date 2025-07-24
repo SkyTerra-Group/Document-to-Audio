@@ -11,7 +11,7 @@ build:
     - name: FLASK_ENV
       value: production
 run:
-  runtime-version: 3
+  runtime-version: 3.8
   command: gunicorn --bind 0.0.0.0:8080 --workers 2 --timeout 300 app:app
   network:
     port: 8080
