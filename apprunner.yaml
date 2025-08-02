@@ -3,21 +3,13 @@ runtime: python311
 build:
   commands:
     build:
-      - echo "Starting build process..."
       - pip3 install --upgrade pip
       - pip3 install -r requirements.txt
-      - echo "Build completed successfully"
-  env:
-    - name: FLASK_ENV
-      value: production
 run:
   runtime-version: "3.11"
-  command: gunicorn --bind 0.0.0.0:8080 --workers 2 --timeout 300 app:app
+  command: python3 -m gunicorn --bind 0.0.0.0:8080 --workers 2 app:app
   network:
     port: 8080
-    env: PORT
   env:
-    - name: PORT
-      value: "8080"
-    - name: FLASK_ENV
-      value: production
+    - name: PYTHONPATH
+      value: /opt/app
